@@ -10,6 +10,8 @@ let all_handlers = [
 let configure custom_handlers =
   Import.register (Utf8.decode "spectest") Spectest.lookup;
   Import.register (Utf8.decode "env") Env.lookup;
+  (* Provide proc_exit in a dedicated module for import under "ssw_util" namespace *)
+  Import.register (Utf8.decode "ssw_util") Exit.lookup;
   List.iter Custom.register custom_handlers
 
 let banner () =
@@ -64,7 +66,12 @@ let () =
     Arg.parse argspec
       (fun file -> add_arg ("(input " ^ quote file ^ ")")) usage;
     configure !customs;
-    List.iter (fun arg -> if not (Run.run_string arg) then exit 1) !args;
+    List.iter (fun arg ->
+      if not (Run.run_string arg) then
+        match Run.get_exit_code () with
+        | Some n -> exit n
+        | None -> exit 1
+    ) !args;
     if !args = [] then Flags.interactive := true;
     if !Flags.interactive then begin
       Flags.print_sig := true;

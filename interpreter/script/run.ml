@@ -9,6 +9,11 @@ module Abort = Error.Make ()
 module Assert = Error.Make ()
 module IO = Error.Make ()
 
+(* Exit status for (exit <code>) meta command; None means no explicit exit requested *)
+let exit_code : int option ref = ref None
+let set_exit_code (n:int) = exit_code := Some n
+let get_exit_code () = !exit_code
+
 exception Abort = Abort.Error
 exception Assert = Assert.Error
 exception IO = IO.Error
@@ -99,11 +104,15 @@ let error at category msg =
 
 let input_from get_script run =
   try
+    (* Reset explicit exit code for each top-level input *)
+    exit_code := None;
     let script = get_script () in
     trace "Running...";
     run script;
     true
   with
+  (* If a proc_exit-like request was made inside user code, suppress normal error reporting. *)
+  | exn when Option.is_some (get_exit_code ()) -> false
   | Decode.Code (at, msg) -> error at "decoding error" msg
   | Parse.Syntax (at, msg) -> error at "syntax error" msg
   | Valid.Invalid (at, msg) -> error at "validation error" msg
@@ -132,12 +141,16 @@ let input_script1 name lexbuf run =
 let input_sexpr name lexbuf run =
   input_from (fun () ->
     let var_opt, def = Parse.Module.parse name lexbuf in
-    [Module (var_opt, def) @@ no_region]) run
+    [ Module (var_opt, def) @@ no_region;
+      Instance (var_opt, var_opt) @@ no_region
+    ]) run
 
 let input_binary name buf run =
   let open Source in
   input_from (fun () ->
-    [Module (None, Encoded (name, buf @@ no_region) @@ no_region) @@ no_region]
+    [ Module (None, Encoded (name, buf @@ no_region) @@ no_region) @@ no_region;
+      Instance (None, None) @@ no_region
+    ]
   ) run
 
 let input_sexpr_file input file run =
@@ -627,6 +640,7 @@ and run_meta cmd =
   | Output (x_opt, None) ->
     (try output_stdout (fun () -> lookup_module x_opt cmd.at)
     with Sys_error msg -> IO.error cmd.at msg)
+
 
 and run_script script =
   List.iter run_command script
