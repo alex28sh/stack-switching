@@ -41,6 +41,6 @@ let exit vs =
 
 let lookup name et =
   match Utf8.encode name, et with
-  | "abort", ExternFuncT ct -> ExternFunc (Func.alloc_host ct abort)
-  | "exit", ExternFuncT ct -> ExternFunc (Func.alloc_host ct exit)
+  | "abort", ExternFuncT ct -> ExternFunc (Func.alloc_host ct (fun _inst -> abort))
+  | "exit", ExternFuncT ct -> ExternFunc (Func.alloc_host ct (fun _inst -> exit))
   | _ -> raise Not_found

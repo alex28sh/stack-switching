@@ -10,8 +10,7 @@ let all_handlers = [
 let configure custom_handlers =
   Import.register (Utf8.decode "spectest") Spectest.lookup;
   Import.register (Utf8.decode "env") Env.lookup;
-  (* Provide proc_exit in a dedicated module for import under "ssw_util" namespace *)
-  Import.register (Utf8.decode "ssw_util") Exit.lookup;
+  Import.register (Utf8.decode "ssw_util") Util.lookup;
   List.iter Custom.register custom_handlers
 
 let banner () =
