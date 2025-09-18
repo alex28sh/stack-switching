@@ -41,7 +41,7 @@ let dispatch_file_ext on_binary on_sexpr on_script_binary on_script on_js file =
   else if Filename.check_suffix file js_ext then
     on_js file
   else
-    raise (Sys_error (file ^ ": unrecognized file type"))
+    on_binary file
 
 
 (* Output *)
