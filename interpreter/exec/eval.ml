@@ -821,7 +821,7 @@ let rec step (c : config) : config =
         in Ref (Aggr.StructRef struct_) :: vs'', []
 
       | StructGet (x, y, exto), Ref (NullRef _) :: vs' ->
-        vs', [Trapping "StructGet null structure reference" @@ e.at]
+        vs', [Trapping "null structure reference" @@ e.at]
 
       | StructGet (x, y, exto), Ref Aggr.(StructRef (Struct (_, fs))) :: vs' ->
         let f =
@@ -832,7 +832,7 @@ let rec step (c : config) : config =
         with Failure _ -> Crash.error e.at "type mismatch reading field")
 
       | StructSet (x, y), v :: Ref (NullRef _) :: vs' ->
-        vs', [Trapping "StructSet null structure reference" @@ e.at]
+        vs', [Trapping "null structure reference" @@ e.at]
 
       | StructSet (x, y), v :: Ref Aggr.(StructRef (Struct (_, fs))) :: vs' ->
         let f =
@@ -1281,7 +1281,9 @@ let rec step (c : config) : config =
         vs', [Frame (n2, frame', ([], instr')) @@ e.at]
 
       | Func.HostFunc (_, f) ->
-        (try List.rev (f (List.rev args)) @ vs', []
+        let prom = Lib.Promise.make () in
+        Lib.Promise.fulfill prom c.frame.inst;
+        (try List.rev (f prom (List.rev args)) @ vs', []
         with Crash (_, msg) -> Crash.error e.at msg)
       )
 

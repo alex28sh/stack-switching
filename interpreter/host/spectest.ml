@@ -33,7 +33,7 @@ let memory =
 
 let func f ft =
   let dt = DefT (RecT [SubT (Final, [], DefFuncT ft)], 0l) in
-  ExternFunc (Func.alloc_host dt (f ft))
+  ExternFunc (Func.alloc_host dt (fun _inst -> f ft))
 
 let print_value v =
   Printf.printf "%s : %s\n"

@@ -4,7 +4,7 @@ open Value
 type 'inst t = 'inst func
 and 'inst func =
   | AstFunc of def_type * 'inst * Ast.func
-  | HostFunc of def_type * (value list -> value list)
+  | HostFunc of def_type * ('inst -> value list -> value list)
 
 let alloc dt inst f =
   ignore (as_func_str_type (expand_def_type dt));
