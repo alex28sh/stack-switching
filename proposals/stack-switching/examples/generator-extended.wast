@@ -58,7 +58,7 @@
         ;; $generator returned: no more data
         (return)
       )
-      ;; Generator suspended, stack now contains [i32 (ref $ct0)]
+      ;; Generator suspended, stack now contains [i32 (ref $ct1)]
       ;; Save continuation to resume it in next iteration
       (local.set $c1)
       ;; Stack now contains the i32 value yielded by $generator
