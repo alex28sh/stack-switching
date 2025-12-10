@@ -136,11 +136,43 @@ let fd_write_impl _ft (inst: Instance.module_inst) (vs: Value.t list) : Value.t 
       )
   | _ -> [Num (I32 28l)]
 
+let poll_oneoff_impl _ft (inst: Instance.module_inst) (vs: Value.t list) : Value.t list =
+    match vs with
+    | [Num (I32 in_ptr); Num (I32 out_ptr); Num (I32 nsubs); Num (I32 nevents_ptr)] ->
+        let mem = mem0 inst in
+        let n = Int32.to_int nsubs in
+        for i = 0 to n - 1 do
+          let sub_ptr = Int32.add in_ptr (Int32.of_int (i * 48)) in
+          let event_ptr = Int32.add out_ptr (Int32.of_int (i * 32)) in
+
+          let userdata = Memory.load_num mem (i32_to_i64 sub_ptr) 0L I64T in
+          let type_ = load_byte mem (Int64.add (i32_to_i64 sub_ptr) 8L) in
+
+          if type_ = 0 then ( (* clock *)
+            let timeout = Memory.load_num mem (i32_to_i64 (Int32.add sub_ptr 24l)) 0L I64T in
+            match timeout with
+            | I64 ns ->
+                let sec = Int64.to_float ns /. 1e9 in
+                ignore (Unix.select [] [] [] sec)
+            | _ -> ()
+          );
+
+          (* Write event *)
+          Memory.store_num mem (i32_to_i64 event_ptr) 0L userdata; (* userdata *)
+          store_i32 mem (Int32.add event_ptr 8l) 0l; (* errno = 0 *)
+          store_byte mem (Int64.add (i32_to_i64 event_ptr) 10L) type_ (* type *)
+        done;
+        store_i32 mem nevents_ptr nsubs;
+        [Num (I32 0l)]
+    | _ -> [Num (I32 28l)]
+
 let lookup name t =
   match Utf8.encode name, t with
   | "proc_exit", _ -> func proc_exit_impl (FuncT ([NumT I32T], []))
   | "clock_time_get", _ ->
       func clock_time_get_impl (FuncT ([NumT I32T; NumT I64T; NumT I32T], [NumT I32T]))
+  | "poll_oneoff", _ ->
+            func poll_oneoff_impl (FuncT ([NumT I32T; NumT I32T; NumT I32T; NumT I32T], [NumT I32T]))
   | "args_get", _ ->
       func args_get_impl (FuncT ([NumT I32T; NumT I32T], [NumT I32T]))
   | "args_sizes_get", _ ->
