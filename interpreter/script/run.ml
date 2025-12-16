@@ -14,6 +14,11 @@ let exit_code : int option ref = ref None
 let set_exit_code (n:int) = exit_code := Some n
 let get_exit_code () = !exit_code
 
+(* WASI argv support: a process-wide argument list visible to the host imports. *)
+let wasi_args : string list ref = ref []
+let set_wasi_args (xs:string list) = wasi_args := xs
+let get_wasi_args () = !wasi_args
+
 exception Abort = Abort.Error
 exception Assert = Assert.Error
 exception IO = IO.Error

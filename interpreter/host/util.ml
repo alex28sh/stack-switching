@@ -78,16 +78,36 @@ let args_sizes_get_impl _ft (inst: Instance.module_inst) (vs: Value.t list) : Va
   match vs with
   | [Num (I32 argc_ptr); Num (I32 argv_buf_size_ptr)] ->
       let mem = mem0 inst in
-      store_i32 mem argc_ptr 0l;
-      store_i32 mem argv_buf_size_ptr 0l;
+      let argv = Run.get_wasi_args () in
+      let argc = List.length argv in
+      let buf_size =
+        List.fold_left (fun acc s -> acc + String.length s + 1) 0 argv
+      in
+      store_i32 mem argc_ptr (Int32.of_int argc);
+      store_i32 mem argv_buf_size_ptr (Int32.of_int buf_size);
       [Num (I32 0l)]
   | _ -> [Num (I32 28l)]
 
-(* WASI: args_get(argv, argv_buf) -> errno; we provide zero args *)
-let args_get_impl _ft (_inst: Instance.module_inst) (vs: Value.t list) : Value.t list =
+(* WASI: args_get(argv, argv_buf) -> errno *)
+let args_get_impl _ft (inst: Instance.module_inst) (vs: Value.t list) : Value.t list =
   match vs with
-  | [Num (I32 _argv); Num (I32 _argv_buf)] ->
-      (* Nothing to write since argc=0 *)
+  | [Num (I32 argv_ptr); Num (I32 argv_buf_ptr)] ->
+      let mem = mem0 inst in
+      let argv = Run.get_wasi_args () in
+      (* Write pointers and strings *)
+      let cur_buf = ref argv_buf_ptr in
+      List.iteri (fun i s ->
+        (* store pointer to current start in argv array *)
+        let entry_ptr = Int32.add argv_ptr (Int32.of_int (i * 4)) in
+        store_i32 mem entry_ptr !cur_buf;
+        (* write bytes of string plus trailing NUL *)
+        let bytes = Bytes.create (String.length s + 1) in
+        Bytes.blit_string s 0 bytes 0 (String.length s);
+        Bytes.set bytes (String.length s) (Char.chr 0);
+        write_bytes mem !cur_buf bytes;
+        (* advance buffer pointer *)
+        cur_buf := Int32.add !cur_buf (Int32.of_int (Bytes.length bytes))
+      ) argv;
       [Num (I32 0l)]
   | _ -> [Num (I32 28l)]
 

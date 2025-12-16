@@ -62,9 +62,43 @@ let argspec = Arg.align
 let () =
   Printexc.record_backtrace true;
   try
+    (* Collect WASI args via CLI option --args (repeatable) *)
+    let wasi_args = ref [] in
+    let add_wasi_arg s = wasi_args := !wasi_args @ [s] in
+    
+    let argspec = Arg.align (
+      [
+        "-", Arg.Set Flags.interactive,
+          " run interactively (default if no files given)";
+        "-e", Arg.String add_arg, " evaluate string";
+        "-i", Arg.String (fun file -> add_arg ("(input " ^ quote file ^ ")")),
+          " read script from file";
+        "-o", Arg.String (fun file -> add_arg ("(output " ^ quote file ^ ")")),
+          " write module to file";
+        "-b", Arg.Int (fun n -> Flags.budget := n),
+          " configure call depth budget (default is " ^ string_of_int !Flags.budget ^ ")";
+        "-w", Arg.Int (fun n -> Flags.width := n),
+          " configure output width (default is " ^ string_of_int !Flags.width ^ ")";
+        "-c", Arg.String add_custom,
+          " recognize custom section";
+        "-ca", Arg.Unit (fun () -> customs := all_handlers),
+          " recognize all known custom section";
+        "-cr", Arg.Set Flags.custom_reject,
+          " reject unrecognized custom sections";
+        "-s", Arg.Set Flags.print_sig, " show module signatures";
+        "-u", Arg.Set Flags.unchecked, " unchecked, do not perform validation";
+        "-j", Arg.Clear Flags.harness, " exclude harness for JS conversion";
+        "-d", Arg.Set Flags.dry, " dry, do not run program";
+        "-t", Arg.Set Flags.trace, " trace execution";
+        "-v", Arg.Unit banner, " show version";
+        "--args", Arg.String add_wasi_arg, " pass a WASI argument (repeatable)"
+      ]
+    ) in
     Arg.parse argspec
       (fun file -> add_arg ("(input " ^ quote file ^ ")")) usage;
     configure !customs;
+    (* Apply collected WASI args so host functions can see them *)
+    Run.set_wasi_args !wasi_args;
     List.iter (fun arg ->
       if not (Run.run_string arg) then
         match Run.get_exit_code () with
