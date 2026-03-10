@@ -14,8 +14,6 @@ jobs:
         include:
           - os: ubuntu-latest
             artifact: wasm-${{ github.ref_name }}-linux-x86_64.tar.gz
-          - os: macos-12
-            artifact: wasm-${{ github.ref_name }}-macos-x86_64.tar.gz
           - os: macos-latest
             artifact: wasm-${{ github.ref_name }}-macos-aarch64.tar.gz
 
@@ -61,5 +59,4 @@ jobs:
         with:
           files: |
             wasm-${{ github.ref_name }}-linux-x86_64.tar.gz/wasm-${{ github.ref_name }}-linux-x86_64.tar.gz
-            wasm-${{ github.ref_name }}-macos-x86_64.tar.gz/wasm-${{ github.ref_name }}-macos-x86_64.tar.gz
             wasm-${{ github.ref_name }}-macos-aarch64.tar.gz/wasm-${{ github.ref_name }}-macos-aarch64.tar.gz
