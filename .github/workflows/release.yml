@@ -1,0 +1,65 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    name: Build ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            artifact: wasm-${{ github.ref_name }}-linux-x86_64.tar.gz
+          - os: macos-13
+            artifact: wasm-${{ github.ref_name }}-macos-x86_64.tar.gz
+          - os: macos-latest
+            artifact: wasm-${{ github.ref_name }}-macos-aarch64.tar.gz
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup OCaml
+        uses: ocaml/setup-ocaml@v3
+        with:
+          ocaml-compiler: 4.14.x
+
+      - name: Install dependencies
+        run: opam install --yes menhir
+
+      - name: Build interpreter
+        run: cd interpreter && make
+
+      - name: Package binary
+        run: |
+          cp interpreter/_build/default/wasm.exe wasm
+          tar -czf ${{ matrix.artifact }} wasm
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.artifact }}
+
+  release:
+    name: Create GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            wasm-${{ github.ref_name }}-linux-x86_64.tar.gz/wasm-${{ github.ref_name }}-linux-x86_64.tar.gz
+            wasm-${{ github.ref_name }}-macos-x86_64.tar.gz/wasm-${{ github.ref_name }}-macos-x86_64.tar.gz
+            wasm-${{ github.ref_name }}-macos-aarch64.tar.gz/wasm-${{ github.ref_name }}-macos-aarch64.tar.gz
