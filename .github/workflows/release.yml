@@ -32,7 +32,7 @@ jobs:
         run: opam install --yes menhir
 
       - name: Build interpreter
-        run: cd interpreter && make
+        run: cd interpreter && opam exec -- make
 
       - name: Package binary
         run: |
