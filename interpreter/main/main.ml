@@ -10,7 +10,7 @@ let all_handlers = [
 let configure custom_handlers =
   Import.register (Utf8.decode "spectest") Spectest.lookup;
   Import.register (Utf8.decode "env") Env.lookup;
-  Import.register (Utf8.decode "ssw_util") Util.lookup;
+  Import.register (Utf8.decode "wasi_snapshot_preview1") Util.lookup;
   List.iter Custom.register custom_handlers
 
 let banner () =
@@ -65,13 +65,16 @@ let () =
     (* Collect WASI args via CLI option --args (repeatable) *)
     let wasi_args = ref [] in
     let add_wasi_arg s = wasi_args := !wasi_args @ [s] in
-    
+    let wasm_program = ref "wasm-program" in
+
     let argspec = Arg.align (
       [
         "-", Arg.Set Flags.interactive,
           " run interactively (default if no files given)";
         "-e", Arg.String add_arg, " evaluate string";
-        "-i", Arg.String (fun file -> add_arg ("(input " ^ quote file ^ ")")),
+        "-i", Arg.String (fun file ->
+            wasm_program := file;
+            add_arg ("(input " ^ quote file ^ ")")),
           " read script from file";
         "-o", Arg.String (fun file -> add_arg ("(output " ^ quote file ^ ")")),
           " write module to file";
@@ -98,7 +101,7 @@ let () =
       (fun file -> add_arg ("(input " ^ quote file ^ ")")) usage;
     configure !customs;
     (* Apply collected WASI args so host functions can see them *)
-    Run.set_wasi_args !wasi_args;
+    Run.set_wasi_args (!wasm_program :: !wasi_args);
     List.iter (fun arg ->
       if not (Run.run_string arg) then
         match Run.get_exit_code () with
